@@ -6,10 +6,6 @@ on:
     paths:
       - "index.html"
       - "data/**"
-  workflow_run:
-    workflows: ["Auto Update"]
-    types:
-      - completed
   workflow_dispatch:
 
 permissions:
@@ -23,7 +19,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.outputs.has_changes == 'true' }}
     steps:
       - name: 取得倉庫代碼
         uses: actions/checkout@v5
@@ -37,6 +32,7 @@ jobs:
         run: |
           mkdir -p _site
           find . -type f ! -name "*.xlsx" ! -name "*.txt" ! -name "*.py" -exec cp --parents {} _site/ \;
+
       - name: 上傳 Pages Artifact
         uses: actions/upload-pages-artifact@v4
         with:
