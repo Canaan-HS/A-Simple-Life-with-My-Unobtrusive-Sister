@@ -81,4 +81,4 @@ def get_xlsx() -> bool:
 
 
 if __name__ == "__main__":
-    get_xlsx
+    get_xlsx()
