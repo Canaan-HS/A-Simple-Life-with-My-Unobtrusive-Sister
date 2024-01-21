@@ -152,7 +152,7 @@ def generate_spa(app_name, file_basenames):
             const mainContent = document.getElementById('main-content');
             const firstButton = tabsContainer.querySelector('.tab-button');
 
-            let currentActiveButton = null;
+            let currentActiveButton = null, currentController = null;
 
             tabsContainer.addEventListener('wheel', (evt) => {{
                 evt.preventDefault();
@@ -161,6 +161,7 @@ def generate_spa(app_name, file_basenames):
 
             const switchTab = async (button) => {{
                 if (!button || button === currentActiveButton) return;
+                if (currentController) currentController.abort();
 
                 const url = button.dataset.src;
                 const activeButton = () => {{
@@ -170,12 +171,18 @@ def generate_spa(app_name, file_basenames):
                 }};
 
                 try {{
-                    const res = await fetch(url);
+                    currentController = new AbortController();
+
+                    const res = await fetch(url, {{ signal: currentController.signal }});
                     if (!res.ok) throw new Error(`${{res.status}}`);
+
                     const htmlText = await res.text();
                     mainContent.innerHTML = htmlText;
+
                     activeButton();
                 }} catch (err) {{
+                    if (err.name === 'AbortError') return;
+
                     mainContent.innerHTML = `
                         <p class="fetch-error">${{err.message}}</p>
                         <iframe class="main-frame" src="about:blank"></iframe>
@@ -186,7 +193,10 @@ def generate_spa(app_name, file_basenames):
                         mainContent.querySelector('.fetch-error').remove();
                         activeButton();
                     }};
+
                     iframe.src = url;
+                }} finally {{
+                    currentController = null;
                 }}
             }};
 
