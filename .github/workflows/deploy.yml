@@ -20,31 +20,24 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 取得倉庫代碼
+      - name: Clone Repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
-      - name: 配置 Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: 準備網站檔案
+      - name: Prepare site files
         run: |
           mkdir -p _site
           find . -type f ! -name "*.xlsx" ! -name "*.txt" ! -name "*.py" -exec cp --parents {} _site/ \;
 
-      - name: 上傳 Pages Artifact
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: "./_site"
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: 從 Artifact 部署到 GitHub Pages
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
