@@ -36,20 +36,23 @@ jobs:
           git config --global user.email 's3459897@gmail.com'
 
           if [[ -n $(git status -s) ]]; then
-            echo "Changes detected. Committing and pushing..."
             git add -A
             git commit -m "Auto update"
             git push
-            echo "::set-output name=deploy::true"
+            echo "deploy=true" >> $GITHUB_OUTPUT
           else
-            echo "No changes to commit."
-            echo "::set-output name=deploy::false"
+            echo "deploy=false" >> $GITHUB_OUTPUT
 
-  deploy-pages:
+  build-pages:
     if: ${{ needs.update.outputs.deploy == 'true' }}
     needs: update
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
@@ -63,6 +66,14 @@ jobs:
         with:
           path: "./_site"
 
+  deploy-pages:
+    if: ${{ needs.update.outputs.deploy == 'true' }}
+    needs: build-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
