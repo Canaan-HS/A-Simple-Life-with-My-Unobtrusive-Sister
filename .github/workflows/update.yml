@@ -26,6 +26,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Set Timezone to UTC+8
+        run: |
+          sudo timedatectl set-timezone Asia/Taipei
+          echo "Current time: $(date)"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.x"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
       - name: Run Python
         run: python main.py
 
@@ -36,12 +50,15 @@ jobs:
           git config --global user.email 's3459897@gmail.com'
 
           if [[ -n $(git status -s) ]]; then
+            echo "Changes detected. Committing and pushing..."
             git add -A
             git commit -m "Auto update"
             git push
             echo "deploy=true" >> $GITHUB_OUTPUT
           else
+            echo "No changes to commit."
             echo "deploy=false" >> $GITHUB_OUTPUT
+          fi
 
   build-pages:
     if: ${{ needs.update.outputs.deploy == 'true' }}
