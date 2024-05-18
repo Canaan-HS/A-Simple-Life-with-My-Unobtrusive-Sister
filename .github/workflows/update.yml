@@ -61,8 +61,8 @@ jobs:
           fi
 
   build-pages:
-    if: ${{ needs.update.outputs.deploy == 'true' }}
     needs: update
+    if: ${{ needs.update.outputs.deploy == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -84,8 +84,10 @@ jobs:
           path: "./_site"
 
   deploy-pages:
+    needs:
+      - update
+      - build-pages
     if: ${{ needs.update.outputs.deploy == 'true' }}
-    needs: build-pages
     runs-on: ubuntu-latest
     environment:
       name: github-pages
