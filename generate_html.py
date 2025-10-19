@@ -136,6 +136,11 @@ def generate_spa(app_name, file_basenames):
             overflow: hidden;
             background-color: var(--content-bg);
         }}
+        .main-frame {{
+            border: none;
+            width: 100%;
+            height: 100%;
+        }}
     </style>
 </head>
 <body>
@@ -146,6 +151,7 @@ def generate_spa(app_name, file_basenames):
             const tabsContainer = document.getElementById('tabs-container');
             const mainContent = document.getElementById('main-content');
             const firstButton = tabsContainer.querySelector('.tab-button');
+
             let currentActiveButton = null;
 
             tabsContainer.addEventListener('wheel', (evt) => {{
@@ -156,19 +162,31 @@ def generate_spa(app_name, file_basenames):
             const switchTab = async (button) => {{
                 if (!button || button === currentActiveButton) return;
 
-                try {{
-                    const res = await fetch(button.dataset.src);
-                    if (!res.ok) throw new Error(`${{res.status}}`);
-                    const htmlText = await res.text();
-
-                    // 直接替換 main 內容
-                    mainContent.innerHTML = htmlText;
-
+                const url = button.dataset.src;
+                const activeButton = () => {{
                     if (currentActiveButton) currentActiveButton.classList.remove('active');
                     button.classList.add('active');
                     currentActiveButton = button;
+                }};
+
+                try {{
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`${{res.status}}`);
+                    const htmlText = await res.text();
+                    mainContent.innerHTML = htmlText;
+                    activeButton();
                 }} catch (err) {{
-                    mainContent.innerHTML = `<p class="fetch-error">${{err.message}}</p>`;
+                    mainContent.innerHTML = `
+                        <p class="fetch-error">${{err.message}}</p>
+                        <iframe class="main-frame" src="about:blank"></iframe>
+                    `;
+
+                    const iframe = mainContent.querySelector('iframe');
+                    iframe.onload = () => {{
+                        mainContent.querySelector('.fetch-error').remove();
+                        activeButton();
+                    }};
+                    iframe.src = url;
                 }}
             }};
 
@@ -188,9 +206,6 @@ def generate_spa(app_name, file_basenames):
 
 
 def generate_html():
-    # 臨時測試用
-    # PATHS["DATA_XLSX"] = DATA_DIR / "存在感薄い妹との簡単生活(0.82E).xlsx"
-
     img_resources = DATA_DIR / "resources"
 
     for file in img_resources.rglob("*"):
@@ -215,4 +230,6 @@ def generate_html():
 
 
 if __name__ == "__main__":
-    generate_html
+    # 臨時測試用
+    PATHS["DATA_XLSX"] = DATA_DIR / "存在感薄い妹との簡単生活(0.82E).xlsx"
+    generate_html()
