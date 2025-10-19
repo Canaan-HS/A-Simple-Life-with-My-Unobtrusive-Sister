@@ -1,0 +1,50 @@
+name: Auto Update
+
+on:
+    schedule:
+        - cron: "0 16 * * *"
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+jobs:
+    Update:
+        name: Auto Run
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Clone Repository
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 1
+
+            - name: Set Timezone to UTC+8
+              run: |
+                  sudo timedatectl set-timezone Asia/Taipei
+                  echo "Current time: $(date)"
+
+            - name: Setting Up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.14.x"
+                  cache: "pip"
+
+            - name: Install Dependencies
+              run: pip install -r requirements.txt
+
+            - name: Run Python
+              run: |
+                  python main.py
+
+            - name: Commit Files
+              run: |
+                  git config --global user.name 'Canaan-HS'
+                  git config --global user.email 's3459897@gmail.com'
+
+                  if [[ -n $(git status -s) ]]; then
+                    git add -A
+                    git commit -m "Update"
+                    git push
+                  else
+                    echo "No changes"
