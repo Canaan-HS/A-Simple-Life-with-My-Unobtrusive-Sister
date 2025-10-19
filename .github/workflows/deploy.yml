@@ -1,0 +1,48 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得倉庫代碼
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 準備網站檔案
+        run: |
+          mkdir -p _site
+          find . -type f ! -name "*.xlsx" ! -name "*.py" -exec cp --parents {} _site/ \;
+      - name: 上傳 Pages Artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "./_site"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 從 Artifact 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
