@@ -62,10 +62,14 @@ def generate_spa(app_name, file_basenames):
 
     html_content = f"""
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icon/32x32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon/192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./icon/512x512.png">
+    <link type="text/css" rel="stylesheet" href="./data/resources/sheet.css">
     <title>{app_name}</title>
     <style>
         :root {{
@@ -118,25 +122,29 @@ def generate_spa(app_name, file_basenames):
             border-bottom-color: var(--primary-color);
             font-weight: 500;
         }}
+        .fetch-error {{
+            color: red;
+            font-size: 2rem;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }}
         main {{
             flex-grow: 1;
             overflow: hidden;
             background-color: var(--content-bg);
         }}
-        #content-frame {{
-            border: none;
-            width: 100%;
-            height: 100%;
-        }}
     </style>
 </head>
 <body>
     <nav id="tabs-container">{tabs_html}</nav>
-    <main><iframe id="content-frame" src="about:blank"></iframe></main>
+    <main id="main-content"></main>
     <script>
         document.addEventListener('DOMContentLoaded', () => {{
             const tabsContainer = document.getElementById('tabs-container');
-            const iframe = document.getElementById('content-frame');
+            const mainContent = document.getElementById('main-content');
             const firstButton = tabsContainer.querySelector('.tab-button');
             let currentActiveButton = null;
 
@@ -145,28 +153,31 @@ def generate_spa(app_name, file_basenames):
                 tabsContainer.scrollLeft += evt.deltaY;
             }}, {{ passive: false }});
 
-            const switchTab = (button) => {{
+            const switchTab = async (button) => {{
                 if (!button || button === currentActiveButton) return;
 
-                iframe.src = button.dataset.src;
+                try {{
+                    const res = await fetch(button.dataset.src);
+                    if (!res.ok) throw new Error(`${{res.status}}`);
+                    const htmlText = await res.text();
 
-                if (currentActiveButton) {{
-                    currentActiveButton.classList.remove('active');
+                    // 直接替換 main 內容
+                    mainContent.innerHTML = htmlText;
+
+                    if (currentActiveButton) currentActiveButton.classList.remove('active');
+                    button.classList.add('active');
+                    currentActiveButton = button;
+                }} catch (err) {{
+                    mainContent.innerHTML = `<p class="fetch-error">${{err.message}}</p>`;
                 }}
-                button.classList.add('active');
-                currentActiveButton = button;
             }};
 
             tabsContainer.addEventListener('click', (evt) => {{
                 const button = evt.target.closest('.tab-button');
-                if (button) {{
-                    switchTab(button);
-                }}
+                if (button) switchTab(button);
             }});
 
-            if (firstButton) {{
-                switchTab(firstButton);
-            }}
+            if (firstButton) switchTab(firstButton);
         }});
     </script>
 </body>
