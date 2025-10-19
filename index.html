@@ -74,6 +74,11 @@
             overflow: hidden;
             background-color: var(--content-bg);
         }
+        .main-frame {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 <body>
@@ -98,6 +103,7 @@
             const tabsContainer = document.getElementById('tabs-container');
             const mainContent = document.getElementById('main-content');
             const firstButton = tabsContainer.querySelector('.tab-button');
+
             let currentActiveButton = null;
 
             tabsContainer.addEventListener('wheel', (evt) => {
@@ -108,19 +114,31 @@
             const switchTab = async (button) => {
                 if (!button || button === currentActiveButton) return;
 
-                try {
-                    const res = await fetch(button.dataset.src);
-                    if (!res.ok) throw new Error(`${res.status}`);
-                    const htmlText = await res.text();
-
-                    // 直接替換 main 內容
-                    mainContent.innerHTML = htmlText;
-
+                const url = button.dataset.src;
+                const activeButton = () => {
                     if (currentActiveButton) currentActiveButton.classList.remove('active');
                     button.classList.add('active');
                     currentActiveButton = button;
+                };
+
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`${res.status}`);
+                    const htmlText = await res.text();
+                    mainContent.innerHTML = htmlText;
+                    activeButton();
                 } catch (err) {
-                    mainContent.innerHTML = `<p class="fetch-error">${err.message}</p>`;
+                    mainContent.innerHTML = `
+                        <p class="fetch-error">${err.message}</p>
+                        <iframe class="main-frame" src="about:blank"></iframe>
+                    `;
+
+                    const iframe = mainContent.querySelector('iframe');
+                    iframe.onload = () => {
+                        mainContent.querySelector('.fetch-error').remove();
+                        activeButton();
+                    };
+                    iframe.src = url;
                 }
             };
 
