@@ -5,3 +5,5 @@ if __name__ == "__main__":
     update = get_xlsx()
     if update:
         generate_html()
+    else:
+        print("不需要更新")
