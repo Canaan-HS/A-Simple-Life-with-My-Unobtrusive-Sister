@@ -30,7 +30,7 @@ jobs:
       - name: 準備網站檔案
         run: |
           mkdir -p _site
-          find . -type f ! -name "*.xlsx" ! -name "*.py" -exec cp --parents {} _site/ \;
+          find . -type f ! -name "*.xlsx" ! -name "*.txt" ! -name "*.py" -exec cp --parents {} _site/ \;
       - name: 上傳 Pages Artifact
         uses: actions/upload-pages-artifact@v4
         with:
