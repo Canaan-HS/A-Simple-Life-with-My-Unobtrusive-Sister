@@ -61,4 +61,4 @@ def get_html() -> bool:
 
 
 if __name__ == "__main__":
-    get_html
+    get_html()
