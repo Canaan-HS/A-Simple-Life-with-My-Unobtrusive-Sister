@@ -10,8 +10,9 @@ permissions:
 
 jobs:
   Update:
-    name: Auto Run
     runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.commit.outputs.has_changes }}
 
     steps:
       - name: Clone Repository
@@ -24,7 +25,7 @@ jobs:
           sudo timedatectl set-timezone Asia/Taipei
           echo "Current time: $(date)"
 
-      - name: Setting Up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.14.x"
@@ -34,18 +35,20 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Python
-        run: |
-          python main.py
+        run: python main.py
 
       - name: Commit Files
+        id: commit
         run: |
           git config --global user.name 'Canaan-HS'
           git config --global user.email 's3459897@gmail.com'
-                    
+
           if [[ -n $(git status -s) ]]; then
             git add -A
             git commit -m "Update"
             git push
+            echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "No changes"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
