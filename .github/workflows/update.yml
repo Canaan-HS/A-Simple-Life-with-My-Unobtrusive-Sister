@@ -1,4 +1,4 @@
-name: Auto Update
+name: Auto Update and Deploy Pages
 
 on:
   schedule:
@@ -8,37 +8,29 @@ on:
 permissions:
   contents: write
   actions: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  Update:
+  update:
     runs-on: ubuntu-latest
-
+    outputs:
+      deploy: ${{ steps.commit.outputs.deploy }}
     steps:
       - name: Clone Repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
-      - name: Set Timezone to UTC+8
-        run: |
-          sudo timedatectl set-timezone Asia/Taipei
-          echo "Current time: $(date)"
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14.x"
-          cache: "pip"
-
-      - name: Install Dependencies
-        run: pip install -r requirements.txt
-
       - name: Run Python
         run: python main.py
 
       - name: Commit and Push Files
-        env:
-          PAT: ${{ secrets.PAT }}
+        id: commit
         run: |
           git config --global user.name 'Canaan-HS'
           git config --global user.email 's3459897@gmail.com'
@@ -47,7 +39,30 @@ jobs:
             echo "Changes detected. Committing and pushing..."
             git add -A
             git commit -m "Auto update"
-            git push https://x-access-token:${PAT}@github.com/${{ github.repository }}.git main
+            git push
+            echo "::set-output name=deploy::true"
           else
             echo "No changes to commit."
-          fi
+            echo "::set-output name=deploy::false"
+
+  deploy-pages:
+    if: ${{ needs.update.outputs.deploy == 'true' }}
+    needs: update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare site files
+        run: |
+          mkdir -p _site
+          find . -type f ! -name "*.xlsx" ! -name "*.txt" ! -name "*.py" -exec cp --parents {} _site/ \;
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "./_site"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
