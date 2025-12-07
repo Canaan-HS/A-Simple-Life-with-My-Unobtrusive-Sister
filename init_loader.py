@@ -17,7 +17,7 @@ XLSX_NAME = "data.xlsx"
 CACHE_DIR = CURRENT_DIR / "cache"
 DATA_DIR = CURRENT_DIR / "data"
 
-DOWNLOAD_URL = "https://docs.google.com/spreadsheets/d/1fDTga-dhWarmZjoPLGN9X85UqCQwDj1L9NpInVcVVLE/edit?gid=1857835699#gid=1857835699"
+DOWNLOAD_URL = "https://docs.google.com/spreadsheets/d/1fDTga-dhWarmZjoPLGN9X85UqCQwDj1L9NpInVcVVLE/edit?pli=1"
 
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
