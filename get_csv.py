@@ -1,30 +1,16 @@
 import io
 import csv
+from pathlib import Path
 from types import SimpleNamespace
 
-import httpx
-from lxml import html
-
-
-BROWSER_HEAD = {
-    "Google": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
-    },
-    "Edge": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0"
-    },
-}
+from curl_cffi import requests as curl
+from curl_cffi.requests import exceptions
+from selectolax.lexbor import LexborHTMLParser
 
 
 class Fetch:
-    def __init__(self, headers: dict | str = "Google", cookies: dict = None) -> None:
-        self.client = httpx.Client(http2=True, timeout=5)
-        self.headers = (
-            BROWSER_HEAD[headers.capitalize()]
-            if isinstance(headers, str)
-            else headers if isinstance(headers, dict) else None
-        )
-        self.cookies = cookies
+    def __init__(self) -> None:
+        self.curl_session = curl.Session(impersonate="chrome120")
 
     def __parse(self, respon, type) -> any:
         parse = {
@@ -32,7 +18,7 @@ class Fetch:
             "text": lambda: respon.text,
             "content": lambda: respon.content,
             "status": lambda: respon.status_code,
-            "html": lambda: html.fromstring(respon.text),
+            "html": lambda: LexborHTMLParser(respon.text),
         }
 
         try:
@@ -40,25 +26,16 @@ class Fetch:
         except:
             return parse.get("none")()
 
-    def http2_get(self, url: str, type: str = "text") -> any:
+    def curl_get(self, url: str, type: str = "html") -> any:
         """
-        *   支援 http2 的 Get 請求
-        >>> [ url ]
-        要請求的連結
-
-        >>> [ type ]
-        要獲取的結果類型
-        ("none" | "text" | "content" | "status" | "html")
-
-        "none" => 無處理
-        "html" => lxml 進行解析
+        >>> type: "none" | "text" | "content" | "status" | "html"
         """
         try:
-            return self.__parse(
-                self.client.get(url, headers=self.headers, cookies=self.cookies), type
-            )
-        except httpx.ConnectTimeout:
+            return self.__parse(self.curl_session.get(url), type)
+        except exceptions.Timeout:
             return SimpleNamespace(text="Request Timeout", status_code=408)
+        except Exception as e:
+            return SimpleNamespace(text=f"Request Error: {e}", status_code=-1)
 
 
 class GetCsv(Fetch):
@@ -67,23 +44,21 @@ class GetCsv(Fetch):
         self.url_template = "https://raw.githubusercontent.com/Canaan-HS/A-Simple-Life-with-My-Unobtrusive-Sister/refs/heads/main/data/{0}.html"
 
     def __parse(self, respon) -> str:
-        headers = [th.text_content().strip() for th in respon.cssselect("thead th[id]")]
+        headers = [th.text().strip() for th in respon.css("thead th[id]")]
         rows = []
 
-        for tr in respon.cssselect("tbody tr"):
-            row_key = tr.cssselect("th")[0].text_content().strip()
-            td = tr.cssselect("td")
+        for tr in respon.css("tbody tr"):
+            row_key = tr.css("th")[0].text().strip()
+            td = tr.css("td")
 
             row = [row_key]
             for idx in range(len(headers)):
-                value = td[idx].text_content().strip() if idx < len(td) else ""
+                value = td[idx].text().strip() if idx < len(td) else ""
                 row.append(value)
 
             rows.append(row)
 
         output = io.StringIO()
-
-        output.write("r=Row key\n")
 
         writer = csv.writer(output)
         writer.writerow(["r", *headers])
@@ -93,8 +68,8 @@ class GetCsv(Fetch):
 
     def send(self, sheet: str) -> dict:
         url = self.url_template.format(sheet)
-        respon = self.http2_get(url, "html")
-        return self.__parse(respon)
+        respon = self.curl_get(url)
+        return respon if type(respon) is SimpleNamespace else self.__parse(respon)
 
 
 if __name__ == "__main__":
@@ -114,5 +89,8 @@ if __name__ == "__main__":
     影音-Video
     獨立顯卡-dGPU
     """
-    result = GetCsv().send("料理-Dish")
-    print(result)
+    csv_text = GetCsv().send("SLG事件-Simulation")
+    print(csv_text)
+
+    # output = Path(__file__).parent / "test.csv"
+    # output.write_text(csv_text, encoding="utf-8-sig")
