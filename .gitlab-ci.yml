@@ -18,7 +18,7 @@ update:
     - schedule
   script:
     - sudo timedatectl set-timezone Asia/Taipei
-    - echo "Current time: $(date)"
+    - 'echo "Current time: $(date)"'
     - pip install -r requirements.txt
     - python main.py
     - git config --global user.name 'Canaan-HS'
@@ -35,15 +35,10 @@ update:
   after_script:
     - |
       if [[ -n $(git status -s) ]]; then
-        echo "deploy=true" >> deploy_vars.txt
+        echo "deploy=true"
       else
-        echo "deploy=false" >> deploy_vars.txt
+        echo "deploy=false"
       fi
-  artifacts:
-    when: always
-    paths:
-      - deploy_vars.txt
-    expire_in: 1 hour
 
 build:
   stage: build
