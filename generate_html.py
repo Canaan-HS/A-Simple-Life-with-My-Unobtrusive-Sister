@@ -12,10 +12,6 @@ def clean_html_file(filepath):
     with open(filepath, encoding="utf-8") as f:
         doc = html.parse(f)
 
-    # ? 目前要避免直接顯示圖片, 可能非全年齡
-    for img in doc.findall(".//img"):
-        img.getparent().remove(img)
-
     for table in doc.findall(".//table"):
         tbody, thead = table.find(".//tbody"), table.find(".//thead")
         if tbody is None or thead is None:
@@ -54,11 +50,12 @@ def clean_html_file(filepath):
     doc.write(filepath, encoding="utf-8", method="html")
 
 
-def generate_spa(app_name, file_basenames):
+def generate_content(app_name, file_basenames):
+
     tabs_html = ""
     for basename in file_basenames:
         filename = f"./data/{basename}.html"
-        tabs_html += f'<button class="tab-button" data-src="{filename}">{basename}</button>\n'
+        tabs_html += f'\n\t<button class="tab-button" data-src="{filename}">{basename}</button>'
 
     html_content = f"""
 <!DOCTYPE html>
@@ -211,6 +208,7 @@ def generate_spa(app_name, file_basenames):
 </body>
 </html>
 """
+
     with open(CURRENT_DIR / "index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
 
@@ -235,11 +233,11 @@ def generate_html():
         filename = CURRENT_DIR / f"data/{base_name}.html"
         clean_html_file(filename)
 
-    generate_spa(name, sheet_names)
+    generate_content(name, sheet_names)
     print("html 生成完成!")
 
 
 if __name__ == "__main__":
     # 臨時測試用
-    PATHS["DATA_XLSX"] = DATA_DIR / "存在感薄い妹との簡単生活(0.82E).xlsx"
+    PATHS["DATA_XLSX"] = DATA_DIR / "存在感薄い妹との簡単生活(1.2.0).xlsx"
     generate_html()
