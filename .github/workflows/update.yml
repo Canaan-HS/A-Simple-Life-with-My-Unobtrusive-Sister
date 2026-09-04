@@ -31,17 +31,19 @@ jobs:
           sudo timedatectl set-timezone Asia/Taipei
           echo "Current time: $(date)"
 
-      - name: Setup Python
-        uses: actions/setup-python@v7
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10.1.0
         with:
-          python-version: "3.14.x"
-          cache: "pip"
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv venv --python 3.14
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: uv pip install -r requirements.txt
 
       - name: Run Python
-        run: python main.py
+        run: .venv\Scripts\python.exe main.py
 
       - name: Commit and Push Files
         id: commit
