@@ -8,6 +8,104 @@ from init_loader import (
 )
 
 
+def expand_row(row, ncol):
+    cells = [None] * ncol
+    pos = 0
+
+    for td in row.findall(".//td"):
+        if pos >= ncol:
+            break
+        span = min(int(td.get("colspan", 1)), ncol - pos)
+        text = td.text_content().strip()
+        for k in range(span):
+            cells[pos + k] = text
+        pos += span
+
+    return cells
+
+
+def shrink_span(td, name, lost):
+    left = int(td.get(name, 1)) - lost
+
+    if left <= 1:
+        td.attrib.pop(name, None)
+    else:
+        td.set(name, str(left))
+
+
+def clean_table(tbody, thead):
+    th_list = thead.findall(".//th")
+    ncol = len(th_list) - 1
+    if ncol <= 0:
+        return
+
+    all_rows = tbody.findall(".//tr")
+
+    drop_rows, allow_delete = set(), True
+    for i in range(len(all_rows) - 1, -1, -1):
+        row = all_rows[i]
+        th = row.find(".//th")
+        if th is None:
+            allow_delete = False
+        elif allow_delete and th.text_content().strip() == row.text_content().strip():
+            drop_rows.add(i)
+        else:
+            allow_delete = False
+
+    for i, row in enumerate(all_rows):
+        if i in drop_rows:
+            continue
+        for td in row.findall(".//td"):
+            rowspan = int(td.get("rowspan", 1))
+            if rowspan <= 1:
+                continue
+            lost = sum(
+                1
+                for j in range(i + 1, min(i + rowspan, len(all_rows)))
+                if j in drop_rows
+            )
+            if lost:
+                shrink_span(td, "rowspan", lost)
+
+    for i in sorted(drop_rows, reverse=True):
+        all_rows[i].getparent().remove(all_rows[i])
+
+    rows = tbody.findall(".//tr")
+    if not rows:
+        return
+
+    grid = [expand_row(row, ncol) for row in rows]
+    spanned = {c for cells in grid for c, text in enumerate(cells) if text is None}
+
+    drop_cols = {
+        c
+        for c in range(ncol)
+        if c not in spanned and all(cells[c] == "" for cells in grid)
+    }
+
+    if not drop_cols or len(drop_cols) == ncol:
+        return
+
+    for c in sorted(drop_cols, reverse=True):
+        th = th_list[c + 1]
+        if th.getparent() is not None:
+            th.getparent().remove(th)
+
+    for row in rows:
+        pos = 0
+        for td in list(row.findall(".//td")):
+            if pos >= ncol:
+                break
+            span = min(int(td.get("colspan", 1)), ncol - pos)
+            covered = set(range(pos, pos + span))
+            lost = len(covered & drop_cols)
+            if lost == span:
+                row.remove(td)
+            elif lost:
+                shrink_span(td, "colspan", lost)
+            pos += span
+
+
 def clean_html_file(filepath):
     with open(filepath, encoding="utf-8") as f:
         doc = html.parse(f)
@@ -16,36 +114,7 @@ def clean_html_file(filepath):
         tbody, thead = table.find(".//tbody"), table.find(".//thead")
         if tbody is None or thead is None:
             continue
-
-        rows = tbody.findall(".//tr")
-        allow_delete, clear_box = True, {}
-
-        for row in reversed(rows):
-            th = row.find(".//th")
-            if th is None:
-                continue
-            idx, content = th.text_content().strip(), row.text_content().strip()
-            if allow_delete and idx == content:
-                row.getparent().remove(row)
-            else:
-                allow_delete = False
-                clear_box[th.get("id")] = [td.text_content().strip() for td in row.findall(".//td")]
-
-        arr = list(clear_box.values())
-        if not arr or not arr[0]:
-            continue
-
-        remove_indices = [
-            i
-            for i in range(-1, -len(arr[0]) - 1, -1)
-            if all((r[i] if len(r) >= abs(i) else "") == "" for r in arr)
-        ]
-        th_list = thead.findall(".//th")
-
-        for i in remove_indices:
-            idx = len(th_list) + i
-            if 0 <= idx < len(th_list):
-                th_list[idx].getparent().remove(th_list[idx])
+        clean_table(tbody, thead)
 
     doc.write(filepath, encoding="utf-8", method="html")
 
