@@ -43,7 +43,7 @@ jobs:
         run: uv pip install -r requirements.txt
 
       - name: Run Python
-        run: .venv\Scripts\python.exe main.py
+        run: .venv/bin/python main.py
 
       - name: Commit and Push Files
         id: commit
