@@ -1,0 +1,21 @@
+{
+  "name": "存在感薄い妹との簡単生活(1.2.0)",
+  "hash": "426743df94c1075374e175a7b5d2fca71edcf70d48c644188908c28d325f0638",
+  "sheets": [
+    "公告-Notice",
+    "SLG事件-Simulation",
+    "RPG事件-Combat",
+    "提示-Tips",
+    "地圖-Map",
+    "野外掉落-Drops",
+    "武器-Weap",
+    "裝甲-Gears",
+    "道具-Items",
+    "料理-Dish",
+    "成就-Achv",
+    "狀態-Status",
+    "手機存檔-MobileArchive",
+    "影音-Video",
+    "獨立顯卡-dGPU"
+  ]
+}
