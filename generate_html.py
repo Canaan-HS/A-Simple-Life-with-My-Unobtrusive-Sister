@@ -1,122 +1,114 @@
 from init_loader import (
-    pd,
-    html,
+    re,
+    Path,
+    load_meta,
+    LexborHTMLParser,
     CURRENT_DIR,
     IMAGE_EXTS,
     DATA_DIR,
-    PATHS,
 )
 
 
-def expand_row(row, ncol):
-    cells = [None] * ncol
-    pos = 0
+def layout_rows(rows, ncol):
+    """把每列 td 的實際起始欄算出來（跳過被上方 rowspan 占住的位置）。"""
+    layouts, carry = [], [0] * ncol
 
-    for td in row.findall(".//td"):
-        if pos >= ncol:
-            break
-        span = min(int(td.get("colspan", 1)), ncol - pos)
-        text = td.text_content().strip()
-        for k in range(span):
-            cells[pos + k] = text
-        pos += span
+    for row in rows:
+        blocked = [n > 0 for n in carry]
+        carry = [max(0, n - 1) for n in carry]
+        placed, col = [], 0
 
-    return cells
+        for td in row.css("td"):
+            while col < ncol and blocked[col]:
+                col += 1
+            if col >= ncol:
+                break
+
+            colspan = min(int(td.attrs.get("colspan", 1)), ncol - col)
+            rowspan = int(td.attrs.get("rowspan", 1))
+            placed.append((td, col, colspan, rowspan))
+            carry[col : col + colspan] = [rowspan - 1] * colspan
+            col += colspan
+
+        layouts.append(placed)
+
+    return layouts
 
 
 def shrink_span(td, name, lost):
-    left = int(td.get(name, 1)) - lost
-
-    if left <= 1:
-        td.attrib.pop(name, None)
-    else:
-        td.set(name, str(left))
+    """colspan/rowspan 減去 lost，剩下 1 就移除屬性。"""
+    value = int(td.attrs.get(name, 1)) - lost
+    if value > 1:
+        td.attrs[name] = str(value)
+    elif name in td.attrs:
+        del td.attrs[name]
 
 
 def clean_table(tbody, thead):
-    th_list = thead.findall(".//th")
-    ncol = len(th_list) - 1
+    """清掉尾端全空的列與欄；欄位位置依 colspan/rowspan 實際還原。"""
+    th_list = thead.css("th")[1:]  # 第一格是左上角空白，不算欄
+    ncol = len(th_list)
     if ncol <= 0:
         return
 
-    all_rows = tbody.findall(".//tr")
+    rows = tbody.css("tr")
+    layouts = layout_rows(rows, ncol)
 
-    drop_rows, allow_delete = set(), True
-    for i in range(len(all_rows) - 1, -1, -1):
-        row = all_rows[i]
-        th = row.find(".//th")
-        if th is None:
-            allow_delete = False
-        elif allow_delete and th.text_content().strip() == row.text_content().strip():
+    # 尾端全空列：th 只有列編號，整列文字就等於 th 文字
+    drop_rows, tail = set(), True
+    for i in range(len(rows) - 1, -1, -1):
+        row = rows[i]
+        th = row.css_first("th")
+        if tail and th is not None and th.text().strip() == row.text().strip():
             drop_rows.add(i)
         else:
-            allow_delete = False
+            tail = False
 
-    for i, row in enumerate(all_rows):
-        if i in drop_rows:
-            continue
-        for td in row.findall(".//td"):
-            rowspan = int(td.get("rowspan", 1))
-            if rowspan <= 1:
-                continue
-            lost = sum(
-                1
-                for j in range(i + 1, min(i + rowspan, len(all_rows)))
-                if j in drop_rows
-            )
+    kept = [(i, placed) for i, placed in enumerate(layouts) if i not in drop_rows]
+
+    # 有內容的儲存格占過的欄一律保留，同時修掉被刪列壓縮的 rowspan
+    used = set()
+    for i, placed in kept:
+        for td, col, colspan, rowspan in placed:
+            lost = sum(j in drop_rows for j in range(i + 1, i + rowspan))
             if lost:
                 shrink_span(td, "rowspan", lost)
+            if td.text().strip():
+                used.update(range(col, col + colspan))
 
     for i in sorted(drop_rows, reverse=True):
-        all_rows[i].getparent().remove(all_rows[i])
+        rows[i].remove()
 
-    rows = tbody.findall(".//tr")
-    if not rows:
-        return
-
-    grid = [expand_row(row, ncol) for row in rows]
-    spanned = {c for cells in grid for c, text in enumerate(cells) if text is None}
-
-    drop_cols = {
-        c
-        for c in range(ncol)
-        if c not in spanned and all(cells[c] == "" for cells in grid)
-    }
-
-    if not drop_cols or len(drop_cols) == ncol:
+    # 整欄全空、且不是整張表都空，才刪
+    drop_cols = set(range(ncol)) - used
+    if not 0 < len(drop_cols) < ncol:
         return
 
     for c in sorted(drop_cols, reverse=True):
-        th = th_list[c + 1]
-        if th.getparent() is not None:
-            th.getparent().remove(th)
+        th_list[c].remove()
 
-    for row in rows:
-        pos = 0
-        for td in list(row.findall(".//td")):
-            if pos >= ncol:
-                break
-            span = min(int(td.get("colspan", 1)), ncol - pos)
-            covered = set(range(pos, pos + span))
-            lost = len(covered & drop_cols)
-            if lost == span:
-                row.remove(td)
+    for _, placed in kept:
+        for td, col, colspan, _ in placed:
+            lost = len(set(range(col, col + colspan)) & drop_cols)
+            if lost == colspan:
+                td.remove()
             elif lost:
                 shrink_span(td, "colspan", lost)
-            pos += span
 
 
 def clean_html_file(filepath):
-    with open(filepath, encoding="utf-8") as f:
-        doc = html.parse(f)
+    filepath = Path(filepath)
+    doc = LexborHTMLParser(filepath.read_text(encoding="utf-8"))
 
-    for table in doc.findall(".//table"):
-        tbody, thead = table.find(".//tbody"), table.find(".//thead")
+    for table in doc.css("table"):
+        tbody, thead = table.css_first("tbody"), table.css_first("thead")
         if tbody is None or thead is None:
             continue
         clean_table(tbody, thead)
 
-    doc.write(filepath, encoding="utf-8", method="html")
+    # Google 匯出的是不含 DOCTYPE 的片段，缺少 DOCTYPE 會讓瀏覽器改以 quirks mode 渲染，影響表格與盒模型
+    out = re.sub(r"\A\s*<!DOCTYPE[^>]*>\s*", "", doc.html, flags=re.IGNORECASE)
+    filepath.write_text(f"<!DOCTYPE html>\n{out}", encoding="utf-8")
 
 
 def generate_content(app_name, file_basenames):
@@ -292,21 +284,17 @@ def generate_html():
             except:
                 pass
 
-    xls = pd.ExcelFile(PATHS["DATA_XLSX"])
-    sheet_names = xls.sheet_names
-
-    name = PATHS["DATA_XLSX"].stem
+    meta = load_meta()
+    sheet_names = meta["sheets"]
+    name = meta["name"]
 
     print("清理文件格式...")
     for base_name in sheet_names:
-        filename = CURRENT_DIR / f"data/{base_name}.html"
-        clean_html_file(filename)
+        clean_html_file(DATA_DIR / f"{base_name}.html")
 
     generate_content(name, sheet_names)
     print("html 生成完成!")
 
 
 if __name__ == "__main__":
-    # 臨時測試用
-    PATHS["DATA_XLSX"] = DATA_DIR / "存在感薄い妹との簡単生活(1.2.0).xlsx"
     generate_html()
