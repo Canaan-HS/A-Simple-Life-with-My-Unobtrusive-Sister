@@ -78,7 +78,7 @@ jobs:
       - name: Prepare site files
         run: |
           mkdir -p dist
-          find . -type f ! -name "*.xlsx" ! -name "*.txt" ! -name "*.py" -exec cp --parents {} dist/ \;
+          find . -type f ! -name "*.xlsx" ! -name "*.txt" ! -name "*.py" ! -name "meta.json" -exec cp --parents {} dist/ \;
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v5
