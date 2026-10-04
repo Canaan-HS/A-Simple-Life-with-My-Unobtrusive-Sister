@@ -24,7 +24,7 @@ CACHE_DIR = CURRENT_DIR / "cache"
 DATA_DIR = CURRENT_DIR / "data"
 
 DOWNLOAD_URL = (
-    "https://docs.google.com/spreadsheets/d/1fDTga-dhWarmZjoPLGN9X85UqCQwDj1L9NpInVcVVLE/edit?pli=1"
+    "https://docs.google.com/spreadsheets/d/1vEwhXk3hnKIIV1fydbuR_gXMHufDQICj/edit?pli=1"
 )
 
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
