@@ -1,46 +1,12 @@
 import io
 import csv
 from pathlib import Path
-from types import SimpleNamespace
 
-from curl_cffi import requests as curl
-from curl_cffi.requests import exceptions
-from selectolax.lexbor import LexborHTMLParser
+from init_loader import requests
 
 
-class Fetch:
-    def __init__(self) -> None:
-        self.curl_session = curl.Session(impersonate="chrome120")
-
-    def __parse(self, respon, type) -> any:
-        parse = {
-            "none": lambda: respon,
-            "text": lambda: respon.text,
-            "content": lambda: respon.content,
-            "status": lambda: respon.status_code,
-            "html": lambda: LexborHTMLParser(respon.text),
-        }
-
-        try:
-            return parse.get(type)()
-        except:
-            return parse.get("none")()
-
-    def curl_get(self, url: str, type: str = "html") -> any:
-        """
-        >>> type: "none" | "text" | "content" | "status" | "html"
-        """
-        try:
-            return self.__parse(self.curl_session.get(url), type)
-        except exceptions.Timeout:
-            return SimpleNamespace(text="Request Timeout", status_code=408)
-        except Exception as e:
-            return SimpleNamespace(text=f"Request Error: {e}", status_code=-1)
-
-
-class GetCsv(Fetch):
+class GetCsv:
     def __init__(self):
-        super().__init__()
         self.url_template = "https://raw.githubusercontent.com/Canaan-HS/A-Simple-Life-with-My-Unobtrusive-Sister/refs/heads/main/data/{0}.html"
 
     def __parse(self, respon) -> str:
@@ -68,8 +34,8 @@ class GetCsv(Fetch):
 
     def send(self, sheet: str) -> dict:
         url = self.url_template.format(sheet)
-        respon = self.curl_get(url)
-        return respon if type(respon) is SimpleNamespace else self.__parse(respon)
+        respon = requests.get(url)
+        return respon if respon.status_code != 200 else self.__parse(respon.html)
 
 
 if __name__ == "__main__":
