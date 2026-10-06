@@ -1,15 +1,10 @@
-import re
-import time
+import base64
 import json
-import shutil
-import hashlib
+import time
 import zipfile
-import urllib.parse
 
 import httpx2
-import openpyxl
 
-from io import BytesIO
 from typing import Iterator
 
 from pathlib import Path
@@ -23,20 +18,16 @@ META_NAME = "meta.json"
 CACHE_DIR = CURRENT_DIR / "cache"
 DATA_DIR = CURRENT_DIR / "data"
 
-DOWNLOAD_URL = (
-    "https://docs.google.com/spreadsheets/d/1vEwhXk3hnKIIV1fydbuR_gXMHufDQICj/edit?pli=1"
-)
-
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 PATHS = {
     "CACHE_ZIP": CACHE_DIR / ZIP_NAME,  # 新數據
-    "DATA_ZIP": DATA_DIR / ZIP_NAME,  # 舊數據
     "META": DATA_DIR / META_NAME,  # 試算表語意快照
 }
 
 IMAGE_EXTS = {"jpg", "jpeg", "png", "gif", "bmp", "webp", "avif", "heic", "svg"}
+API_URL = "https://script.google.com/macros/s/AKfycbwEkIv5gAqj7_DYqPtG2G8gTGQD4I-zLHyNsgxW-6mWta5xJokmVC9TkuR6RirII8kp/exec"
 
 
 class Response(httpx2.Response):
@@ -58,6 +49,7 @@ class HttpClient(httpx2.Client):
             url = args[0] if args else kwargs.get("url", "Unknown URL")
             print(f"[{func.__name__.upper()}] {url}\n耗時: {end_time - start_time:.4f} 秒\n")
             return result
+
         return wrapper
 
     def send(self, request, **kwargs) -> Response:
@@ -75,21 +67,6 @@ class HttpClient(httpx2.Client):
 
 
 requests = HttpClient(http2=True, follow_redirects=True)
-
-
-def parse_name(content: str) -> str:
-    """解析檔案名稱"""
-    filename = ""
-    match = re.search(r"filename\*\s*=\s*UTF-8''([^;]+)", content)
-
-    if match:
-        filename = urllib.parse.unquote(match.group(1))
-    else:
-        match = re.search(r'filename\s*=\s*"([^"]+)"', content)
-        if match:
-            filename = match.group(1)
-
-    return filename
 
 
 def load_meta() -> dict:
@@ -112,4 +89,4 @@ def save_meta(name: str, digest: str, sheets: list) -> None:
 
 
 if __name__ == "__main__":
-    print(requests.get(DOWNLOAD_URL).html)
+    pass
