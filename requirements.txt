@@ -1,3 +1,2 @@
-openpyxl
 selectolax
 httpx2[http2]
