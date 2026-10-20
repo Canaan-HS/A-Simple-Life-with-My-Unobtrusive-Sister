@@ -1,6 +1,6 @@
 {
   "name": "存在感薄い妹との簡単生活(1.3.0.).xlsx",
-  "hash": "97e57b364df8715499e796096a0e681ce6ccbf7816a2fe6e95a167efee07570f",
+  "hash": "80b0c26f4366b16e372fe493ca77643657f7c31fb33e75736b833aa80accadf3",
   "sheets": [
     "公告-Notice",
     "SLG事件-Simulation",
@@ -8,8 +8,8 @@
     "提示-Tips",
     "地圖-Map",
     "武器-Weap",
-    "野外掉落-Drops",
     "裝甲-Gears",
+    "野外掉落-Drops",
     "道具-Items",
     "料理-Dish",
     "成就-Achv",
