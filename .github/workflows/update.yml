@@ -49,7 +49,7 @@ jobs:
         id: commit
         run: |
           git config --global user.name 'Canaan-HS'
-          git config --global user.email 's3459897@gmail.com'
+          git config --global user.email 'c8anaan9hs75@gmail.com'
 
           if [[ -n $(git status -s) ]]; then
             echo "Changes detected. Committing and pushing..."
